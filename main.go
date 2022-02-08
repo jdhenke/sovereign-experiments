@@ -82,7 +82,7 @@ func stopServer() {
 }
 
 func verifyPatch(patch []byte) error {
-	return nil // always accept any patch
+	return fmt.Errorf("error") // never accept any patch
 }
 
 func applyPatch(patch []byte) error {
