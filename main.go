@@ -81,8 +81,63 @@ func stopServer() {
 	}
 }
 
+// Verify by spinning up a copy of the future server that would exist after this patch is applied and making sure it
+// starts.
 func verifyPatch(patch []byte) error {
-	return nil // always accept any patch
+	const testDir = "../test"
+	if err := os.RemoveAll(testDir); err != nil {
+		return fmt.Errorf("ensuring old test server is removed: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(testDir)
+	}()
+
+	if err := exec.Command("git", "clone", ".git", testDir).Run(); err != nil {
+		return fmt.Errorf("cloning current server to test server: %v", err)
+	}
+
+	applyPatchCmd := exec.Command("git", "am")
+	applyPatchCmd.Dir = testDir
+	applyPatchCmd.Stdin = bytes.NewReader(patch)
+	if err := applyPatchCmd.Run(); err != nil {
+		return fmt.Errorf("applying patch to test server: %v", err)
+	}
+
+	runTestServerCmd := exec.Command("go", "run", ".")
+	runTestServerCmd.Dir = testDir
+	runTestServerCmd.Env = append(os.Environ(), "PORT=8081")
+	if err := runTestServerCmd.Start(); err != nil {
+		return fmt.Errorf("starting test server: %v", err)
+	}
+	defer func() {
+		_ = runTestServerCmd.Process.Kill()
+	}()
+
+	passed := false
+	for i := 0; i < 10; i++ {
+		time.Sleep(1 * time.Second)
+		resp, err := http.Get("http://localhost:8081/")
+		if err != nil {
+			log.Printf("Error while waiting for test server to respond: %v", err)
+			continue
+		}
+		if resp.StatusCode == 200 {
+			passed = true
+		} else {
+			log.Printf("Received bad status code from test server: %v", resp.Status)
+		}
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
+		if passed {
+			break
+		}
+	}
+
+	if !passed {
+		return fmt.Errorf("timed out waiting for test server to successfully start")
+	}
+	log.Println("Verified the test server can start successfully.")
+	return nil
 }
 
 func applyPatch(patch []byte) error {
