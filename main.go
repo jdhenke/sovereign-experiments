@@ -20,6 +20,9 @@ func main() {
 	log.Println("Starting server...")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/patch", handlePatch)
+	mux.HandleFunc("/easter", func(rw http.ResponseWriter, r *http.Request) {
+		http.Error(rw, "egg", http.StatusOK)
+	})
 	mux.Handle("/", http.FileServer(http.Dir(".")))
 	srv = &http.Server{
 		Addr:    fmt.Sprintf(":%s", os.Getenv("PORT")),
