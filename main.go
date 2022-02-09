@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"sovereign/shell"
 	"syscall"
 	"time"
 )
@@ -18,10 +17,6 @@ import (
 var srv *http.Server
 
 func main() {
-	if os.Getenv("ROLE") == "" {
-		err := shell.Run()
-		log.Fatalf("FATAL: shell server terminated: %v", err)
-	}
 	log.Println("Starting server...")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/patch", handlePatch)
