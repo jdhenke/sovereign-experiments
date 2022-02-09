@@ -17,6 +17,7 @@ import (
 var srv *http.Server
 
 func main() {
+	os.Exit(1)
 	log.Println("Starting server...")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/patch", handlePatch)
