@@ -86,14 +86,15 @@ func verifyPatch(patch []byte) error {
 }
 
 func applyPatch(patch []byte) error {
-	cmd := exec.Command("git", "am")
-	cmd.Stdin = bytes.NewReader(patch)
-	b, err := cmd.CombinedOutput()
+	f, err := os.OpenFile("patches.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		return fmt.Errorf("applying patch: %v\n%s\n", err, string(b))
+		return fmt.Errorf("opening patches.log: %v", err)
 	}
-	for _, line := range bytes.Split(bytes.TrimSpace(b), []byte("\n")) {
-		log.Printf("git am: %s", line)
+	if _, err := io.Copy(f, bytes.NewReader(patch)); err != nil {
+		return fmt.Errorf("copying patch to patches.log: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("closing patches.log: %v", err)
 	}
 	return nil
 }
