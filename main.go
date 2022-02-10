@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sovereign/shell"
 	"syscall"
 	"time"
 )
@@ -18,6 +19,10 @@ import (
 var srv *http.Server
 
 func main() {
+	if os.Getenv(shell.ModeVar) == "" {
+		err := shell.Run()
+		log.Fatalf("FATAL: shell server terminated: %v", err)
+	}
 	log.Println("Starting server...")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/patch", handlePatch)
@@ -45,7 +50,7 @@ func restart() error {
 		return fmt.Errorf("go build failed: %v\n%s", err, b)
 	}
 	if err := syscall.Exec(bin, []string{base}, os.Environ()); err != nil {
-		return fmt.Errorf("calling exec 'go run .': %v", err)
+		return fmt.Errorf("calling exec '%s': %v", bin, err)
 	}
 	return nil
 }
@@ -53,7 +58,7 @@ func restart() error {
 func handlePatch(rw http.ResponseWriter, r *http.Request) {
 	if err := tryPatch(r.Body); err != nil {
 		log.Printf("Failed trying patch: %v", err)
-		http.Error(rw, err.Error(), http.StatusBadRequest)
+		http.Error(rw, fmt.Sprintf("REJECTED: %v", err.Error()), http.StatusBadRequest)
 		return
 	}
 	http.Error(rw, http.StatusText(http.StatusOK), http.StatusOK)
