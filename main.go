@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 	"time"
 )
@@ -34,11 +35,16 @@ func main() {
 }
 
 func restart() error {
-	goPath, err := exec.LookPath("go")
+	d, err := ioutil.TempDir("", "")
 	if err != nil {
-		return fmt.Errorf("finding go executable: %v", err)
+		return fmt.Errorf("creating temp dir for build output: %v", err)
 	}
-	if err := syscall.Exec(goPath, []string{"go", "run", "."}, os.Environ()); err != nil {
+	const base = "sovereign"
+	bin := filepath.Join(d, base)
+	if b, err := exec.Command("go", "build", "-o", bin, ".").CombinedOutput(); err != nil {
+		return fmt.Errorf("go build failed: %v\n%s", err, b)
+	}
+	if err := syscall.Exec(bin, []string{base}, os.Environ()); err != nil {
 		return fmt.Errorf("calling exec 'go run .': %v", err)
 	}
 	return nil
